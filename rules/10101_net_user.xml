@@ -1,6 +1,6 @@
 <group name="windows,sysmon,process_creation">
 
-  <rule id="101001" level="8">
+  <rule id="10101" level="8">
 
     <if_sid>92031</if_sid>
 
