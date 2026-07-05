@@ -70,7 +70,13 @@ Description
 
 Repeated the experiment several times with different field configurations. Every attempt produced the same result: removing <field> restored detection, while adding any field prevented the rule from triggering.
 
-14. Validating field extraction with wazuh-logtest
+13. Trying with different regex
+
+Description
+
+the same result
+
+15. Validating field extraction with wazuh-logtest
 
 Description
 
