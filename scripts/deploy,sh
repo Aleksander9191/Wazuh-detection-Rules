@@ -1,0 +1,6 @@
+#!/bin/bash
+
+sudo cp rules/10101_net_user.xml /var/ossec/etc/rules/
+sudo systemctl restart wazuh-manager
+
+echo "Deployment finished."
