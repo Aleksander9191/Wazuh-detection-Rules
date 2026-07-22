@@ -167,7 +167,7 @@ Searched for decoder definitions related to windows_eventchannel and JSON parsin
 
 ![promote](../screenshots/18.png)
 
-29. Inspecting analysis engine debug output
+19. Inspecting analysis engine debug output
 
 
 
@@ -189,3 +189,129 @@ After multiple validation steps, the investigation consistently demonstrated tha
 - Introducing any <field> condition prevented the rule from matching, despite the corresponding fields being present in the decoded event.
 
 This behavior could not be reproduced by syntax validation and appears to indicate an unexpected issue with field evaluation rather than an XML configuration error.
+
+## 20. Escalating the investigation to the Wazuh maintainers
+
+After exhausting all local troubleshooting steps, the findings were documented and submitted as a GitHub issue to the official Wazuh repository here:
+
+https://github.com/wazuh/wazuh/issues/37589
+
+
+The report included:
+
+- the custom detection rule,
+- Sysmon event samples,
+- `wazuh-logtest` output,
+- analysis engine logs,
+- validation results,
+- screenshots demonstrating the issue.
+
+The initial assumption was that the problem was related to rule field evaluation.
+
+---
+
+## 21. Discovering an unexpected agent installation issue
+
+While working with the Wazuh maintainers, the investigation shifted away from the detection rule itself.
+
+Additional diagnostics on the Windows agent revealed that the installation directory was incomplete.
+
+The following components were missing:
+
+- `queue\`
+- `queue\logcollector\file_status.json`
+- `queue\syscollector\db\local.db`
+
+The agent logs also reported SQLite initialization errors, suggesting that the installation itself was unhealthy.
+
+
+
+```cmd
+tree "C:\Program Files (x86)\ossec-agent"
+
+dir "C:\Program Files (x86)\ossec-agent"
+```
+
+---
+
+## 22. Verifying a clean installation
+
+Following the maintainer's recommendation, a completely fresh Windows virtual machine was prepared.
+
+Performed steps:
+
+- uninstalling the previous agent,
+- manually removing the installation directory,
+- installing Wazuh Agent 4.14.6,
+- configuring the manager connection.
+
+This time, the installation created the complete directory structure, including all expected `queue` components.
+
+The agent successfully connected to the manager.
+
+Verification:
+
+```cmd
+Get-Service WazuhSvc
+
+tree "C:\Program Files (x86)\ossec-agent"
+```
+
+---
+
+## 23. Confirming Sysmon event ingestion
+
+After the clean installation, Sysmon Process Create events were successfully forwarded to the Wazuh manager.
+
+Verification on the manager:
+
+```bash
+sudo grep "Microsoft-Windows-Sysmon" /var/ossec/logs/archives/archives.json
+```
+
+The original communication problem between the Windows agent and the manager was no longer present.
+
+---
+
+## 24. Validating the official upgrade path
+
+To determine whether the issue was related to a faulty installer, the official upgrade scenario suggested by the maintainer was reproduced.
+
+Steps:
+
+- clean installation of Wazuh Agent 4.14.5,
+- verification of correct operation,
+- upgrade to Wazuh Agent 4.14.6.
+
+Both versions created the expected installation structure, and the upgrade completed successfully without removing the `queue` directory.
+
+Version verification:
+
+```cmd
+type "C:\Program Files (x86)\ossec-agent\VERSION.json"
+```
+
+---
+
+## 25. Final outcome
+
+The original installation problem could not be reproduced.
+
+The following scenarios were successfully validated:
+
+- clean installation of Wazuh Agent 4.14.5,
+- clean installation of Wazuh Agent 4.14.6,
+- upgrade from 4.14.5 to 4.14.6.
+
+After reviewing the collected evidence, the Wazuh maintainer concluded that the original installation failure was most likely caused by environment-specific corruption rather than a reproducible installer defect.
+
+The GitHub issue was closed with the recommendation to enable verbose MSI logging if the problem ever reappears.
+
+
+```cmd
+msiexec /i wazuh-agent-4.14.6-1.msi /l*v installer.log
+```
+
+---
+
+
